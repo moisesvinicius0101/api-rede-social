@@ -1,4 +1,5 @@
 
+
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -20,8 +21,12 @@ from app.models.follow import Follow
 
 config = context.config
 
-# Sobrescreve a DATABASE_URL com o valor do .env
-config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+# Sobrescreve a DATABASE_URL com o valor do .env e trata o caractere %
+database_url = os.getenv("DATABASE_URL", "")
+if "%" in database_url:
+    database_url = database_url.replace("%", "%%")
+
+config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
