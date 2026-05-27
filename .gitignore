@@ -1,0 +1,38 @@
+
+
+# Bloqueia as senhas, chaves secretas e credenciais do PostgreSQL
+.env
+.env.local
+.env.development
+.env.production
+.env.testing
+
+# Ignora as pastas onde as bibliotecas do projeto ficam instaladas localmente
+venv/
+.venv/
+env/
+ENV/
+pyvenv.cfg
+.python-version
+
+
+# Evita enviar ficheiros compilados que o Python gera sozinho
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+
+# Ignora as pastas de configuração pessoal
+.vscode/
+.idea/
+*.swp
+*.bak
+
+
+# Ignora ficheiros do sistema operativo que não servem para o código
+.DS_Store
+Thumbs.db
