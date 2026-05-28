@@ -6,14 +6,16 @@ from jwt import InvalidTokenError, ExpiredSignatureError
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, status, Depends
-from fastapi.security import OAuth2PasswordBearer
+# Trocado para HTTPBearer para aceitar login por JSON puro
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # CARREGAMENTO DAS CONFIGURAÇÕES DO .ENV
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login") 
+
+security_scheme = HTTPBearer()
 
 # CONFIGURAÇÃO DA CRIPTOGRAFIA DE SENHA
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -59,8 +61,10 @@ def decode_access_token(token: str) -> dict:
     except (InvalidTokenError, ExpiredSignatureError):
         raise HTTPException(**credential_exception)
 
-def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
-    """Extrai o ID do usuário autenticado a partir do token."""
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)) -> int:
+    """Extrai o ID do usuário autenticado a partir do token enviado no cabeçalho."""
+    # credentials.credentials pega apenas a string do token que você colou
+    token = credentials.credentials
     payload = decode_access_token(token)
     user_id: str = payload.get("sub") 
     return int(user_id)
