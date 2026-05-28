@@ -1,49 +1,90 @@
 
-from fastapi import APIRouter, HTTPException, status, Depends, Path, Query 
-from typing import Optional
-# Exemplo de importação do seu core/security (ajuste conforme suas pastas)
-# from app.core.security import get_current_user 
+
+from fastapi import APIRouter, HTTPException, status, Depends, Path, Query, UploadFile, File
+from typing import Optional, List
+from sqlalchemy.orm import Session
+import shutil
+import os
+
+from app.database import get_db
+from app.models import User
+from app.services.users_service import UserService
+from app.core.security import get_current_user_id
+from app.schemas.user import UserResponse, UserUpdate 
 
 router = APIRouter(prefix='/users', tags=['users'])
 
-# Essa rota vai páginação e filtração por nome
-@router.get("/", status_code=status.HTTP_200_OK)
+
+@router.get("/", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
 async def get_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, le=100),
-    name: Optional[str] = Query(None)
+    name: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
 ):
-    """
-    Lista usuários da rede social por filtro.
-    """
-    pass
+    """Lista usuários da rede social por filtro."""
+    return UserService.get_all(db, skip=skip, limit=limit, name=name)
 
-@router.get("/me", status_code=status.HTTP_200_OK)
-async def get_current_user_profile():
-    """
-    Retorna o perfil do usuário que está logado atualmente (baseado no Token).
-    """
-    pass
 
-@router.get("/{id}", status_code=status.HTTP_200_OK)
-async def get_user(id: int = Path(..., gt=0)):
-    """
-    Busca o perfil de um usuário específico pelo ID (quando você clica no perfil de alguém).
-    """
-    pass
+@router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def get_current_user_profile(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Retorna o perfil do usuário que está logado atualmente (baseado no Token)."""
+    return UserService.get_by_id(db, user_id=current_user_id)
 
-@router.put("/{id}", status_code=status.HTTP_200_OK)
-async def update_user(id: int = Path(..., gt=0)):
-    """
-    Atualiza os dados do usuário (Bio, Nome, Foto). 
-    Regra de negócio: Um usuário só pode atualizar o seu próprio ID.
-    """
-    pass
+
+@router.get("/{id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def get_user(
+    id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Busca o perfil de um usuário específico pelo ID."""
+    return UserService.get_by_id(db, user_id=id)
+
+
+@router.put("/{id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def update_user(
+    user_data: UserUpdate,
+    id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Atualiza dados textuais do perfil (nome, bio, etc)."""
+    data_dict = user_data.model_dump(exclude_unset=True) 
+    return UserService.update(db, user_id=id, current_user_id=current_user_id, update_data=data_dict)
+
+
+@router.post("/me/upload-avatar", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def upload_profile_picture(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Faz o upload e atualiza apenas a foto de perfil do usuário logado."""
+    upload_dir = "uploads/avatars"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    extension = file.filename.split(".")[-1]
+    filename = f"avatar_{current_user_id}.{extension}"
+    file_path = os.path.join(upload_dir, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    
+    data_dict = {"profile_picture": f"/{file_path}"}
+    return UserService.update(db, user_id=current_user_id, current_user_id=current_user_id, update_data=data_dict)
+
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(id: int = Path(..., gt=0)):
-    """
-    Exclui a conta do usuário.
-    Regra de negócio: Um usuário só pode deletar a sua própria conta.
-    """
-    pass
+async def delete_user(
+    id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Exclui a conta do usuário."""
+    UserService.delete(db, user_id=id, current_user_id=current_user_id)

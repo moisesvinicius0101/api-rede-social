@@ -36,3 +36,5 @@ pyvenv.cfg
 # Ignora ficheiros do sistema operativo que não servem para o código
 .DS_Store
 Thumbs.db
+
+uploads/
