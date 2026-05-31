@@ -35,7 +35,7 @@ api-rede-social/
 
 ## Como Rodar o Projeto Localmente
 
-git clone [https://github.com/moisesvinicius0101/api-rede-social.git](https://github.com/moisesvinicius0101/api-rede-social.git)
+git clone https://github.com/moisesvinicius0101/api-rede-social.git
 cd api-rede-social
 
 ## Configurar o Ambiente Virtual (venv)
