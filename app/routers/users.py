@@ -65,21 +65,8 @@ async def upload_profile_picture(
     current_user_id: int = Depends(get_current_user_id)
 ):
     """Faz o upload e atualiza apenas a foto de perfil do usuário logado."""
-    upload_dir = "uploads/avatars"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    extension = file.filename.split(".")[-1]
-    filename = f"avatar_{current_user_id}.{extension}"
-    file_path = os.path.join(upload_dir, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    
-    data_dict = {"profile_picture": f"/{file_path}"}
-    return UserService.update(db, user_id=current_user_id, current_user_id=current_user_id, update_data=data_dict)
-
-
+    # A rota apenas chama o serviço e passa o arquivo bruto
+    return UserService.upload_avatar(db, user_id=current_user_id, file=file)
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     id: int = Path(..., gt=0),
