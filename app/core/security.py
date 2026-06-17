@@ -13,6 +13,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))
 
 
 security_scheme = HTTPBearer()
@@ -43,6 +44,41 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_refresh_token(data: dict, expires_delta: timedelta = None) -> str:
+    """Gera um novo Token JWT de refresh com tempo de expiração mais longo."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_tokens(user_id: int) -> dict:
+    """Gera um par de tokens (access e refresh) para um usuário autenticado."""
+    data = {"sub": str(user_id)}
+    access_token = create_access_token(data)
+    refresh_token = create_refresh_token(data)
+    return {"access_token": access_token, "refresh_token": refresh_token}
+
+def validate_refresh_token(token: str) -> dict:
+    """Valida o Token de refresh e extrai os dados de dentro dele."""
+    credential_exception = {
+        "status_code": status.HTTP_401_UNAUTHORIZED,
+        "detail": "Could not validate refresh token",
+        "headers": {"WWW-Authenticate": "Bearer"},
+    }
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        subject_id: str = payload.get("sub")
+        if subject_id is None:
+            raise HTTPException(**credential_exception)
+        return payload
+    except (InvalidTokenError, ExpiredSignatureError):
+        raise HTTPException(**credential_exception)
+    
 
 def decode_access_token(token: str) -> dict:
     """Valida o Token JWT e extrai os dados de dentro dele."""

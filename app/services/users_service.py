@@ -2,10 +2,33 @@
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
+import os
+import shutil
+from fastapi import UploadFile
 from app.models import User
 from typing import Optional
 
 class UserService:
+    
+    @staticmethod
+    def upload_avatar(db: Session, user_id: int, file: UploadFile) -> User:
+        upload_dir = "uploads/avatars"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Extrai a extensão e gera o nome do arquivo
+        extension = file.filename.split(".")[-1]
+        filename = f"avatar_{user_id}.{extension}"
+        
+        # Cria o caminho padrão Web 
+        file_path = os.path.join(upload_dir, filename).replace("\\", "/")
+        
+        # Salva o arquivo 
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+    
+        data_dict = {"profile_picture": f"/{file_path}"}
+        return UserService.update(db, user_id=user_id, current_user_id=user_id, update_data=data_dict)
     
     @staticmethod
     def get_all(db: Session, skip: int = 0, limit: int = 100, name: Optional[str] = None):
